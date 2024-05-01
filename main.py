@@ -4,10 +4,13 @@ import io
 import numpy as np
 from flask import Flask, jsonify, redirect, request
 from PIL import Image
-from skimage.transform import resize  # <--- resize
+from skimage.transform import resize
 from tensorflow.keras.models import load_model
 
 app = Flask(__name__)
+
+# Cargar el modelo durante la inicialización de la aplicación Flask
+model = load_model("modelo.h5")
 
 main_html = """
 <html>
@@ -17,18 +20,12 @@ main_html = """
   var lastX, lastY;
   var ctx;
 
-   function getRndInteger(min, max) {
-    return Math.floor(Math.random() * (max - min) ) + min;
-   }
-
   function InitThis() {
       ctx = document.getElementById('myCanvas').getContext("2d");
 
-
-      symbols_name = ["heart","diamond","club","spade"]
       symbols = ["♥", "♦", "♣", "♠"];
       mensaje_symbols = symbols.join(",")      
-      document.getElementById('mensaje').innerHTML  = 'Dibuja uno de estos simbolos ' + mensaje_symbols;
+      document.getElementById('mensaje').innerHTML  = 'Dibuja uno de estos símbolos ' + mensaje_symbols;
 
       $('#myCanvas').mousedown(function (e) {
           mousePressed = true;
@@ -75,8 +72,6 @@ main_html = """
      document.getElementById('myImage').value = canvas.toDataURL();
   }
 
-
-
 </script>
 <body onload="InitThis();">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js" type="text/javascript"></script>
@@ -112,28 +107,20 @@ def predict():
     try:
         img_data = request.form.get("myImage").replace("data:image/png;base64,", "")
         img = Image.open(io.BytesIO(base64.b64decode(img_data)))
-        # Redimensionar la imagen a 28x28 y agregar una dimensión de canal de color
-        # Normalizar los valores de píxeles
-        img = img.split()[3]
+        img = img.split()[3]  # Tomar solo la cuarta capa de la imagen RGBA
 
         size = (28, 28)
-
         img = np.array(img) / 255.0
         img = resize(img, size)
-
-        # Agregar una dimensión de lote
         img = np.expand_dims(img, axis=0)
-        # img = np.expand_dims(img, axis=-1)
-        # Cargar el modelo y hacer la predicción
-        model = load_model("modelo.h5")
-        prediction = model.predict(img)
 
-        # Obtener la clase predicha
+        # Hacer la predicción utilizando el modelo previamente cargado
+        prediction = model.predict(img)
         predicted_symbol = np.argmax(prediction)
+
         int_to_symbol = {0: "♥", 1: "♦", 2: "♣", 3: "♠"}
         name_symbol = int_to_symbol[predicted_symbol]
-        print(name_symbol)
-        # Devolver la predicción como una respuesta JSON
+
         return jsonify({"predicted_symbol": name_symbol})
 
     except Exception as e:
