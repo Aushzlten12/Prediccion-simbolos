@@ -121,8 +121,17 @@ def predict():
         int_to_symbol = {0: "♥", 1: "♦", 2: "♣", 3: "♠"}
         name_symbol = int_to_symbol[predicted_symbol]
 
-        return jsonify({"predicted_symbol": name_symbol})
+        percentage_similarity = {
+            symbol: f"{prob * 100:.2f}%"
+            for symbol, prob in zip(int_to_symbol.values(), prediction[0])
+        }
+        # Formatear los resultados como JSON
+        results = {
+            "El simbolo se parece a": name_symbol,
+            "Porcentaje de similitud": percentage_similarity,
+        }
 
+        return jsonify(results)
     except Exception as e:
         print("Error occurred:", e)
         return redirect("/", code=302)
